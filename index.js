@@ -20,16 +20,26 @@ app.use(bodyParser.urlencoded({limit:'50mb', extended: true}));
 mongoose.connect("mongodb+srv://udaysolanki530:cGJxtqNBgPKHkgJo@csr-data.iqypl.mongodb.net/CSR-data?retryWrites=true&w=majority", {
     useNewUrlParser: true, 
     useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 30000,
 }).then(() => console.log("MongoDB Connected"))
 .catch(err => console.log(err));
 
-// Sample Schema
+// Updated Schema
 const EventSchema = new mongoose.Schema({
-    name: String,
-    email: String,
-    age: Number,
-    course: String,
-    image: String
+    programType: String,
+    customProgramType: String,
+    title: String,
+    description: String,
+    eventDate: String,
+    eventVenue: String,
+    partner: String,
+    beneficiarynum: String,
+    beneficiarytext: String,
+    //  
+    unittype: String,
+    quantvaluetext: String,
+    images: [String],
+    mainImage: String,
 });
 const Event = mongoose.model("csr-events", EventSchema); 
 
@@ -39,7 +49,7 @@ app.post("/api/events", async (req, res) => {
     try {
         const newEvent = new Event(req.body);
         await newEvent.save();
-        res.json({ message: "Student added successfully!" });
+        res.json({ message: "Event added successfully!" });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
