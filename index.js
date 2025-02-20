@@ -43,6 +43,13 @@ const EventSchema = new mongoose.Schema({
 });
 const Event = mongoose.model("csr-events", EventSchema); 
 
+// Keep the cache mechanism
+const cache = {
+    data: null,
+    lastUpdated: null,
+    expirationTime: 3600000 // 1 hour in milliseconds
+};
+
 // API Route to Get Data
 app.post("/api/events", async (req, res) => {
     
@@ -56,13 +63,32 @@ app.post("/api/events", async (req, res) => {
 });
 
 app.get("/api/events", async (req, res) => {
-    try{
+    try {
+        // Check if cache exists and is not expired
+        if (cache.data && cache.lastUpdated && 
+            (Date.now() - cache.lastUpdated) < cache.expirationTime) {
+            return res.json(cache.data);
+        }
+
+        // If no cache or expired, fetch from MongoDB
         const events = await Event.find();
+        
+        // Update cache
+        cache.data = events;
+        cache.lastUpdated = Date.now();
+        
         res.json(events);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-})
+});
+
+// Add a route to clear cache if needed
+app.post("/api/clear-cache", (req, res) => {
+    cache.data = null;
+    cache.lastUpdated = null;
+    res.json({ message: "Cache cleared successfully" });
+});
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
