@@ -6,19 +6,27 @@ const bodyParser = require("body-parser");
 
 const app = express();
 const options = {
-    origin:'*',
+    origin: '*',
     methods: "GET,POST,PUT,DELETE",
     allowedHeaders: "Content-Type,Authorization",
-
-}
+};
 app.use(cors(options));
-app.use(bodyParser.json({limit:'50mb'}));
+app.use(bodyParser.json({ limit: '50mb' }));
 app.use(express.json());
-app.use(bodyParser.urlencoded({limit:'50mb', extended: true}));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+
+// Middleware to disable caching and prevent WebSocket issues
+app.use((req, res, next) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Connection", "close");
+    next();
+});
 
 // Connect to MongoDB Atlas
 mongoose.connect("mongodb+srv://udaysolanki530:cGJxtqNBgPKHkgJo@csr-data.iqypl.mongodb.net/CSR-data?retryWrites=true&w=majority", {
-    useNewUrlParser: true, 
+    useNewUrlParser: true,
     useUnifiedTopology: true,
     serverSelectionTimeoutMS: 30000,
 }).then(() => console.log("MongoDB Connected"))
@@ -35,24 +43,15 @@ const EventSchema = new mongoose.Schema({
     partner: String,
     beneficiarynum: String,
     beneficiarytext: String,
-    //  
     unittype: String,
     quantvaluetext: String,
     images: [String],
     mainImage: String,
 });
-const Event = mongoose.model("csr-events", EventSchema); 
+const Event = mongoose.model("csr-events", EventSchema);
 
-// Keep the cache mechanism
-const cache = {
-    data: null,
-    lastUpdated: null,
-    expirationTime: 3600000 // 1 hour in milliseconds
-};
-
-// API Route to Get Data
+// API Route to Post Data
 app.post("/api/events", async (req, res) => {
-    
     try {
         const newEvent = new Event(req.body);
         await newEvent.save();
@@ -62,32 +61,14 @@ app.post("/api/events", async (req, res) => {
     }
 });
 
+// API Route to Get Data
 app.get("/api/events", async (req, res) => {
     try {
-        // Check if cache exists and is not expired
-        if (cache.data && cache.lastUpdated && 
-            (Date.now() - cache.lastUpdated) < cache.expirationTime) {
-            return res.json(cache.data);
-        }
-
-        // If no cache or expired, fetch from MongoDB
         const events = await Event.find();
-        
-        // Update cache
-        cache.data = events;
-        cache.lastUpdated = Date.now();
-        
         res.json(events);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-});
-
-// Add a route to clear cache if needed
-app.post("/api/clear-cache", (req, res) => {
-    cache.data = null;
-    cache.lastUpdated = null;
-    res.json({ message: "Cache cleared successfully" });
 });
 
 const PORT = 5000;
